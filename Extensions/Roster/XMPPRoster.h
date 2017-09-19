@@ -177,27 +177,39 @@
 /**
  * Adds the given user to the roster with an optional nickname 
  * and requests permission to receive presence information from them.
+ *
+ * Returns the "id" attribute of the <iq> stanza or `nil`. The latter means no request 
+ * has been performed.
 **/
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName;
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName;
 
 /**
  * Adds the given user to the roster with an optional nickname, 
  * adds the given user to groups
  * and requests permission to receive presence information from them.
+ *
+ * Returns the "id" attribute of the <iq> stanza or `nil`. The latter means no request 
+ * has been performed.
 **/
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups;
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups;
 
 /**
  * Adds the given user to the roster with an optional nickname,
  * adds the given user to groups
  * and optionally requests permission to receive presence information from them.
+ *
+ * Returns the "id" attribute of the <iq> stanza or `nil`. The latter means no request 
+ * has been performed.
 **/
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups subscribeToPresence:(BOOL)subscribe;
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups subscribeToPresence:(BOOL)subscribe;
 
 /**
  * Sets/modifies the nickname for the given user.
+ *
+ * Returns the "id" attribute of the <iq> stanza or `nil`. The latter means no request 
+ * has been performed.
 **/
-- (void)setNickname:(NSString *)nickname forUser:(XMPPJID *)jid;
+- (NSString *)setNickname:(NSString *)nickname forUser:(XMPPJID *)jid;
 
 /**
  * Remove the user from the roster, unsubscribe from their presence, AND
@@ -207,8 +219,11 @@
  * 
  * @see unsubscribePresenceFromUser:
  * @see revokePresencePermissionFromUser:
+ *
+ * Returns the "id" attribute of the <iq> stanza or `nil`. The latter means no request 
+ * has been performed.
 **/
-- (void)removeUser:(XMPPJID *)jid;
+- (NSString *)removeUser:(XMPPJID *)jid;
 
 /**
  * If we don't currently receive presence from the given user,
@@ -255,8 +270,11 @@
  * 
  * If you also choose, you can add the user to your roster.
  * Doing so is similar to the traditional IM model.
+ *
+ * Returns the "id" attribute of the <iq> stanza if `andAddToRoster=TRUE`. Otherwise
+ * `nil` is returned because no <iq> is generated.
 **/
-- (void)acceptPresenceSubscriptionRequestFrom:(XMPPJID *)jid andAddToRoster:(BOOL)flag;
+- (NSString *)acceptPresenceSubscriptionRequestFrom:(XMPPJID *)jid andAddToRoster:(BOOL)flag;
 
 /**
  * Rejects the presence subscription request from the given user.

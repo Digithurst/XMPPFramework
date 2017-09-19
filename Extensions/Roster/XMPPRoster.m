@@ -462,17 +462,17 @@ enum XMPPRosterFlags
 #pragma mark Roster Management
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName{
-	[self addUser:jid withNickname:optionalName groups:nil subscribeToPresence:YES];
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName{
+	return [self addUser:jid withNickname:optionalName groups:nil subscribeToPresence:YES];
 }
 
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups{
-	[self addUser:jid withNickname:optionalName groups:groups subscribeToPresence:YES];
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups{
+	return [self addUser:jid withNickname:optionalName groups:groups subscribeToPresence:YES];
 }
 
-- (void)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups subscribeToPresence:(BOOL)subscribe{
+- (NSString *)addUser:(XMPPJID *)jid withNickname:(NSString *)optionalName groups:(NSArray *)groups subscribeToPresence:(BOOL)subscribe{
 	
-	if (jid == nil) return;
+	if (jid == nil) return nil;
 
 	XMPPJID *myJID = xmppStream.myJID;
 
@@ -485,7 +485,7 @@ enum XMPPRosterFlags
 		//    receive presence from robbiehanson@deusty.com/work
 		
 		XMPPLogInfo(@"%@: %@ - Ignoring request to add myself to my own roster", [self class], THIS_METHOD);
-		return;
+		return nil;
 	}
 
 	// Add the buddy to our roster
@@ -515,7 +515,9 @@ enum XMPPRosterFlags
 	NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"jabber:iq:roster"];
 	[query addChild:item];
 
-	XMPPIQ *iq = [XMPPIQ iqWithType:@"set" child:query];
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" child:query];
+    [iq addAttributeWithName:@"id" stringValue:uuid];
 
 	[xmppStream sendElement:iq];
 
@@ -523,13 +525,15 @@ enum XMPPRosterFlags
 	{
 		[self subscribePresenceToUser:jid];
 	}
+    
+    return uuid;
 }
 
-- (void)setNickname:(NSString *)nickname forUser:(XMPPJID *)jid
+- (NSString *)setNickname:(NSString *)nickname forUser:(XMPPJID *)jid
 {
 	// This is a public method, so it may be invoked on any thread/queue.
 	
-	if (jid == nil) return;
+	if (jid == nil) return nil;
 	
 	// <iq type="set">
 	//   <query xmlns="jabber:iq:roster">
@@ -543,11 +547,15 @@ enum XMPPRosterFlags
 	
 	NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"jabber:iq:roster"];
 	[query addChild:item];
-	
-	XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
+    
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
+    [iq addAttributeWithName:@"id" stringValue:uuid];
 	[iq addChild:query];
 	
 	[xmppStream sendElement:iq];
+    
+    return uuid;
 }
 
 - (void)subscribePresenceToUser:(XMPPJID *)jid
@@ -610,18 +618,18 @@ enum XMPPRosterFlags
 	[xmppStream sendElement:presence];
 }
 
-- (void)removeUser:(XMPPJID *)jid
+- (NSString *)removeUser:(XMPPJID *)jid
 {
 	// This is a public method, so it may be invoked on any thread/queue.
 	
-	if (jid == nil) return;
+	if (jid == nil) return nil;
 	
 	XMPPJID *myJID = xmppStream.myJID;
 	
 	if ([myJID isEqualToJID:jid options:XMPPJIDCompareBare])
 	{
 		XMPPLogInfo(@"%@: %@ - Ignoring request to remove myself from my own roster", [self class], THIS_METHOD);
-		return;
+		return nil;
 	}
 	
 	// Remove the user from our roster.
@@ -629,26 +637,30 @@ enum XMPPRosterFlags
 	// And revoke contact's subscription to our presence.
 	// ...all in one step
 	
-	// <iq type="set">
+	// <iq type="set" id="<uuid>">
 	//   <query xmlns="jabber:iq:roster">
 	//     <item jid="bareJID" subscription="remove"/>
 	//   </query>
 	// </iq>
-	
+    
 	NSXMLElement *item = [NSXMLElement elementWithName:@"item"];
 	[item addAttributeWithName:@"jid" stringValue:[jid bare]];
 	[item addAttributeWithName:@"subscription" stringValue:@"remove"];
 	
 	NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"jabber:iq:roster"];
 	[query addChild:item];
-	
-	XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
-	[iq addChild:query];
+    
+    NSString *uuid = [[NSUUID UUID] UUIDString];
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"set"];
+    [iq addAttributeWithName:@"id" stringValue:uuid];
+    [iq addChild:query];
 	
 	[xmppStream sendElement:iq];
+    
+    return uuid;
 }
 
-- (void)acceptPresenceSubscriptionRequestFrom:(XMPPJID *)jid andAddToRoster:(BOOL)flag
+- (NSString *)acceptPresenceSubscriptionRequestFrom:(XMPPJID *)jid andAddToRoster:(BOOL)flag
 {
 	// This is a public method, so it may be invoked on any thread/queue.
 	
@@ -663,8 +675,12 @@ enum XMPPRosterFlags
 	
 	if (flag)
 	{
-		[self addUser:jid withNickname:nil];
+		return [self addUser:jid withNickname:nil];
 	}
+    else 
+    {
+        return nil;
+    }
 }
 
 - (void)rejectPresenceSubscriptionRequestFrom:(XMPPJID *)jid
