@@ -11,6 +11,7 @@
 #import "XMPPIDTracker.h"
 #import "XMPPLogging.h"
 #import "XMPPFramework.h"
+#import "XMPPRoom.h"
 
 #if ! __has_feature(objc_arc)
     #warning This file must be compiled with ARC. Use -fobjc-arc flag (or convert project to ARC).
@@ -22,8 +23,9 @@
     static const int xmppLogLevel = XMPP_LOG_LEVEL_WARN;
 #endif
 
-static NSString* PUBSUB_EVENT_XMLNS = @"http://jabber.org/protocol/pubsub#event";
-static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
+static NSString *const XMPPPubSubNamespace = @"http://jabber.org/protocol/pubsub#event";
+static NSString *const XMPPMUCSubNamespace = @"urn:xmpp:mucsub:0";
+static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
 
 @interface XMPPMUCSub (PrivateAPI)
 
@@ -87,6 +89,40 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
 #pragma mark -
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+- (NSString *)supportedBy:(XMPPRoom *)room
+{
+    if (nil == room) {
+        return nil;
+    }
+    
+    // <iq from='hag66@shakespeare.example/pda'
+    //       to='coven@muc.shakespeare.example'
+    //     type='get'
+    //       id='ik3vs715'>
+    //   <query xmlns='http://jabber.org/protocol/disco#info'/>
+    // </iq>
+    
+    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:XMPPDiscoInfoNamespace];
+    
+    NSString *iqId = [XMPPStream generateUUID];
+    
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
+    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
+    [iq addAttributeWithName:@"to"   stringValue:room.roomJID.bare];
+    
+    [iq addChild:query];
+    
+    [xmppIDTracker addElement:iq target:self selector:@selector(handleSupportedByIQ:withInfo:) 
+                      timeout:60];
+    [xmppStream sendElement:iq];
+    
+    return iqId;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma mark -
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 - (NSString *)subscribeTo:(XMPPJID *)room nick:(NSString *)nick password:(NSString *)pass
 {
     return [self subscribe:xmppStream.myJID to:room nick:nick password:pass];
@@ -136,7 +172,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
     [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presence"];
     
     
-    NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:@"urn:xmpp:mucsub:0"];
+    NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
     [subscribe addAttributeWithName:@"nick" stringValue:nick];
     
     // Subscribe self or somebody else? If somebody else then JID has to be added to <subscribe>.
@@ -188,7 +224,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
     // JID and <unsubscribe jid> is the user that shall be unsubscribed.
     
     NSXMLElement *unsubscribe = [NSXMLElement elementWithName:@"unsubscribe" 
-                                                        xmlns:@"urn:xmpp:mucsub:0"];
+                                                        xmlns:XMPPMUCSubNamespace];
     // Unsubscribe self or somebody else? If somebody else then JID has to be added to 
     // <unsubscribe>.
     if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
@@ -227,7 +263,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
     // </iq>
     
     NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
-                                                          xmlns:@"urn:xmpp:mucsub:0"];
+                                                          xmlns:XMPPMUCSubNamespace];
     
     NSString *iqId = [XMPPStream generateUUID];
     
@@ -259,7 +295,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
     // </iq>
     
     NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
-                                                          xmlns:@"urn:xmpp:mucsub:0"];
+                                                          xmlns:XMPPMUCSubNamespace];
     
     NSString *iqId = [XMPPStream generateUUID];
     
@@ -284,7 +320,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
 - (void)handleSubscribeQueryIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
 {
     dispatch_block_t block = ^{ @autoreleasepool {
-        NSXMLElement *query = [iq elementForName:@"subscribe" xmlns:@"urn:xmpp:mucsub:0"];
+        NSXMLElement *query = [iq elementForName:@"subscribe" xmlns:XMPPMUCSubNamespace];
         if (nil == query) {
             // Can this actually happen? Still, safeguard for my conscience.
             return;
@@ -314,7 +350,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
 - (void)handleUnsubscribeQueryIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
 {
     dispatch_block_t block = ^{ @autoreleasepool {
-        NSXMLElement *query = [iq elementForName:@"unsubscribe" xmlns:@"urn:xmpp:mucsub:0"];
+        NSXMLElement *query = [iq elementForName:@"unsubscribe" xmlns:XMPPMUCSubNamespace];
         if (nil == query) {
             // Must have been another request with the same id?
             // Can this actually happen? Still, safeguard for my conscience.
@@ -385,6 +421,53 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
         }
         else {
             [multicastDelegate xmppMUCSubDidFailToReceiveSubscribersIn:self to:iq.from
+                                                                 error:[self errorFromIQ:iq]];
+        }
+    }};
+    
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
+}
+
+
+- (void)handleSupportedByIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
+{
+    // <iq from='coven@muc.shakespeare.example'
+    //       to='hag66@shakespeare.example/pda'
+    //     type='result'
+    //       id='ik3vs715'>
+    //   <query xmlns='http://jabber.org/protocol/disco#info'>
+    //     <identity category='conference'
+    //                   name='A Dark Cave'
+    //                   type='text' />
+    //     <feature var='http://jabber.org/protocol/muc' />
+    //     ...
+    //     <feature var='urn:xmpp:mucsub:0' />
+    //     ...
+    //   </query>
+    // </iq>
+    
+    dispatch_block_t block = ^{ @autoreleasepool {
+        if (iq.isResultIQ) {
+            NSXMLElement *query = [iq elementForName:@"query" xmlns:XMPPDiscoInfoNamespace];
+            for (NSXMLNode *child in query.children) {
+                if ([@"feature" isEqualToString:child.name] && NSXMLElementKind == child.kind) {
+                    NSString *var = [(NSXMLElement *)child attributeStringValueForName:@"var"];
+                    if ([XMPPMUCSubNamespace isEqualToString:var]) {
+                        [multicastDelegate xmppMUCSub:self serviceSupportedBy:iq.from];
+                        return;
+                    }
+                }
+            }
+            
+            [multicastDelegate xmppMUCSub:self serviceNotSupportedBy:iq.from];
+        }
+        else {
+            [multicastDelegate xmppMUCSub:self didFailToReceiveSupportedBy:iq.from
                                                                  error:[self errorFromIQ:iq]];
         }
     }};
@@ -576,7 +659,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
 
 - (NSArray<XMPPJID *>*)jidFromSubscriptionIQ:(XMPPIQ *)iq
 {
-    NSXMLElement *subscriptions = [iq elementForName:@"subscriptions" xmlns:@"urn:xmpp:mucsub:0"];
+    NSXMLElement *subscriptions = [iq elementForName:@"subscriptions" xmlns:XMPPMUCSubNamespace];
     if (nil == subscriptions) {
         return nil;
     }
@@ -595,7 +678,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
 
 - (NSXMLElement *)findMUCSubItemsElement:(XMPPElement *)element forEvent:(NSString *)event
 {
-    NSXMLElement *eventElement = [element elementForName:@"event" xmlns:PUBSUB_EVENT_XMLNS];
+    NSXMLElement *eventElement = [element elementForName:@"event" xmlns:XMPPPubSubNamespace];
     if (nil == eventElement) {
         return nil;
     }
@@ -605,7 +688,7 @@ static NSString* MUCSUB_NS_PREFIX = @"urn:xmpp:mucsub:nodes:";
         return nil;
     }
     
-    NSString* mucsubString = [MUCSUB_NS_PREFIX stringByAppendingString:event];
+    NSString* mucsubString = [XMPPMUCSubFeaturesPrefix stringByAppendingString:event];
     if (![[mucsubItems attributeStringValueForName:@"node"] isEqualToString:mucsubString]) {
         return nil;
     }

@@ -16,6 +16,7 @@
 @class XMPPJID;
 @class XMPPMessage;
 @class XMPPPresence;
+@class XMPPRoom;
 
 /**
  * The XMPPMUCSub provides functionality to a proprietary Multi User Chat extension of 
@@ -67,6 +68,24 @@
 - (NSString *)moduleName;
  
 */
+
+// MARK: Service Discovery
+
+/**
+ * Query whether MUC-Sub is enabled on a room.
+ * 
+ * @param room
+ *        The `XMPPRoom` for which to check if MUC-Sub has been enabled.
+ * 
+ * @return
+ * The request id of the IQ is in case client code may want to do manual tracking. `nil`
+ * if `room` is `nil`.
+ *
+ * @see `[XMPPMUCSub xmppMUCSub:serviceSupportedBy:]`, 
+ *      `[XMPPMUCSub xmppMUCSub:serviceNotSupportedBy:]`,
+ *      `[XMPPMUCSub xmppMUCSub:didFailToReceiveSupportedBy:error:]`
+**/
+- (NSString *)supportedBy:(XMPPRoom *)room;
 
 // MARK: Subscription Management
 
@@ -246,6 +265,24 @@
  * returned as regular `XMPPPresence` for easy consumption.
 **/
 - (void)xmppMUCSub:(XMPPMUCSub *)sender didReceivePresence:(XMPPPresence *)presence;
+
+/**
+ * Called when the MUC-Sub service is supported by a specific room. This is a response to
+ * a client calling `[XMPPMUCSub supportedBy:]`.
+**/
+- (void)xmppMUCSub:(XMPPMUCSub *)sender serviceSupportedBy:(XMPPJID *)room;
+
+/**
+ * Called when the MUC-Sub service is not supported by a specific room. This is a response 
+ * to a client calling `[XMPPMUCSub supportedBy:]`.
+**/
+- (void)xmppMUCSub:(XMPPMUCSub *)sender serviceNotSupportedBy:(XMPPJID *)room;
+
+/**
+ * Called when the MUC-Sub server responds with an error `[XMPPMUCSub supportedBy:]`.
+**/
+- (void)xmppMUCSub:(XMPPMUCSub *)sender didFailToReceiveSupportedBy:(XMPPJID *)room
+             error:(NSError *)error;
 
 @end
 
