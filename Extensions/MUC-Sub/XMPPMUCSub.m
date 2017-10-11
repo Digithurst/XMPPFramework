@@ -129,7 +129,7 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
 }
 
 
-- (NSString*)unsubscribeFrom:(XMPPJID * )room
+- (NSString *)unsubscribeFrom:(XMPPJID *)room
 {
     return [self unsubscribe:xmppStream.myJID from:room];
 }
