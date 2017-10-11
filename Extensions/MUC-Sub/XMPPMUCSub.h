@@ -44,30 +44,8 @@
 **/
 @interface XMPPMUCSub : XMPPModule
 {
-/*  Inherited from XMPPModule:
-    
-    XMPPStream *xmppStream;
-    
-    dispatch_queue_t
-    id multicastDelegate;
-*/
-    
     XMPPIDTracker *xmppIDTracker;
 }
-
-/* Inherited from XMPPModule:
- 
-- (BOOL)activate:(XMPPStream *)xmppStream;
-- (void)deactivate;
-
-@property (readonly) XMPPStream *xmppStream;
- 
-- (void)addDelegate:(id)delegate delegateQueue:(dispatch_queue_t)delegateQueue;
-- (void)removeDelegate:(id)delegate delegateQueue:(dispatch_queue_t)delegateQueue;
-- (void)removeDelegate:(id)delegate;
-- (NSString *)moduleName;
- 
-*/
 
 // MARK: Service Discovery
 
@@ -85,7 +63,7 @@
  *      `[XMPPMUCSub xmppMUCSub:serviceNotSupportedBy:]`,
  *      `[XMPPMUCSub xmppMUCSub:didFailToReceiveSupportedBy:error:]`
 **/
-- (NSString *)supportedBy:(XMPPRoom *)room;
+- (nullable NSString *)supportedBy:(nonnull XMPPRoom *)room;
 
 // MARK: Subscription Management
 
@@ -106,7 +84,8 @@
  * The request id of the IQ is in case client code may want to do manual tracking. `nil`
  * if `room` is `nil`.
 **/
-- (NSString *)subscribeTo:(XMPPJID *)room nick:(NSString *)nick password:(NSString *)pass;
+- (nullable NSString *)subscribeTo:(nonnull XMPPJID *)room nick:(nullable NSString *)nick 
+                          password:(nullable NSString *)pass;
 
 /**
  * Unsubscribes the currently logged in user from the specified room.
@@ -118,7 +97,7 @@
  * The request id of the IQ is returned in case client code may want to do manual 
  * tracking. `nil` if `room` is `nil`.
 **/
-- (NSString *)unsubscribeFrom:(XMPPJID *)room;
+- (nullable NSString *)unsubscribeFrom:(nonnull XMPPJID *)room;
 
 /**
  * Subscribes `user` to the specified room.
@@ -142,8 +121,8 @@
  * The request id of the IQ is returned in case client code may want to do manual 
  * tracking. `nil` if `user` and/or `room` are `nil`.
 **/
-- (NSString *)subscribe:(XMPPJID *)user to:(XMPPJID *)room nick:(NSString *)nick 
-               password:(NSString *)pass;
+- (nullable NSString *)subscribe:(nonnull XMPPJID *)user to:(nonnull XMPPJID *)room 
+                            nick:(nullable NSString *)nick password:(nullable NSString *)pass;
 
 /**
  * Unsubscribes `user` from the specified room.
@@ -160,7 +139,7 @@
  * The request id of the IQ is returned in case client code may want to do manual 
  * tracking. `nil` if `user` and/or `room` are `nil`.
 **/
-- (NSString *)unsubscribe:(XMPPJID *)user from:(XMPPJID *)room;
+- (nullable NSString *)unsubscribe:(nonnull XMPPJID *)user from:(nonnull XMPPJID *)room;
 
 /**
  * Get a list of all the rooms the current user is subscribed to.
@@ -173,7 +152,7 @@
  * The request id of the IQ is returned in case client code may want to do manual 
  * tracking.
 **/
-- (NSString *)subscriptionsAt:(NSString *)domain;
+- (nullable NSString *)subscriptionsAt:(nonnull NSString *)domain;
 
 /**
  * Get a list of all the users that have subscribed to the specified room. The logged in user 
@@ -183,7 +162,7 @@
  * The request id of the IQ is returned in case client code may want to do manual 
  * tracking.
 **/
-- (NSString *)subscribersIn:(XMPPJID *)room;
+- (nullable NSString *)subscribersIn:(nonnull XMPPJID *)room;
 
 @end
 
@@ -205,14 +184,15 @@
  * subscribing oneself or another user. Both result in this method being called on 
  * success.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didSubscribeUser:(XMPPJID *)user to:(XMPPJID *)room;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didSubscribeUser:(nonnull XMPPJID *)user 
+                to:(nonnull XMPPJID *)room;
 
 /**
  * The subscription process failed. It is not differentiated between subscribing oneself
  * or another user. Both result in this method being called on failure.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didFailToSubscribe:(XMPPJID *)user to:(XMPPJID *)room 
-             error:(NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToSubscribe:(nonnull XMPPJID *)user 
+                to:(nonnull XMPPJID *)room error:(nonnull NSError *)error;
 
 
 /**
@@ -220,69 +200,72 @@
  * unsubscribing oneself or another user. Both result in this method being called on 
  * success.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didUnsubscribeUser:(XMPPJID *)user from:(XMPPJID *)room;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didUnsubscribeUser:(nonnull XMPPJID *)user 
+              from:(nonnull XMPPJID *)room;
 
 /**
  * The unsubscription process failed. It is not differentiated between unsubscribing 
  * oneself or another user. Both result in this method being called on failure.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didFailToUnsubscribe:(XMPPJID *)user from:(XMPPJID *)room 
-             error:(NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToUnsubscribe:(nonnull XMPPJID *)user 
+              from:(nonnull XMPPJID *)room error:(nonnull NSError *)error;
 
 /**
  * Called in response to `[XMPPMUCSub subscriptions]`. Returns an array of room `XMPPJID`
  * objects the current user is subscribed to.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didReceiveSubscriptionsAt:(NSArray *)subscriptions;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didReceiveSubscriptionsAt:(nonnull NSArray *)subscriptions;
 
 /**
  * Called in response to `[XMPPMUCSub subscriptions]` if fetching the subscriptions failed.
 **/
-- (void)xmppMUCSubDidFailToReceiveSubscriptionsAt:(XMPPMUCSub *)sender error:(NSError *)error;
+- (void)xmppMUCSubDidFailToReceiveSubscriptionsAt:(nonnull XMPPMUCSub *)sender 
+                                            error:(nonnull NSError *)error;
 
 /**
  * Called in response to `[XMPPMUCSub subscribers:]`. Returns an array of user `XMPPJID`
  * objects that are subscribed to the specified room.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didReceiveSubscribersIn:(NSArray *)subscribers 
-                to:(XMPPJID *)room;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didReceiveSubscribersIn:(nonnull NSArray *)subscribers 
+                to:(nonnull XMPPJID *)room;
 
 /**
  * Called in response to `[XMPPMUCSub subscribers:]`. Returns an array of user `XMPPJID`
  * objects that are subscribed to the specified room.
 **/
-- (void)xmppMUCSubDidFailToReceiveSubscribersIn:(XMPPMUCSub *)sender to:(XMPPJID *)room 
-                                          error:(NSError *)error;
+- (void)xmppMUCSubDidFailToReceiveSubscribersIn:(nonnull XMPPMUCSub *)sender 
+                                             to:(nonnull XMPPJID *)room 
+                                          error:(nonnull NSError *)error;
 
 /**
  * Called when a message has been received. The message is parsed from MUC-Sub format and
  * returned as regular `XMPPMessage` for easy consumption.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didReceiveMessage:(XMPPMessage *)message;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didReceiveMessage:(nonnull XMPPMessage *)message;
 
 /**
  * Called when a presence has been received. The presence is parsed from MUC-Sub format and
  * returned as regular `XMPPPresence` for easy consumption.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didReceivePresence:(XMPPPresence *)presence;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didReceivePresence:(nonnull XMPPPresence *)presence;
 
 /**
  * Called when the MUC-Sub service is supported by a specific room. This is a response to
  * a client calling `[XMPPMUCSub supportedBy:]`.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender serviceSupportedBy:(XMPPJID *)room;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender serviceSupportedBy:(nonnull XMPPJID *)room;
 
 /**
  * Called when the MUC-Sub service is not supported by a specific room. This is a response 
  * to a client calling `[XMPPMUCSub supportedBy:]`.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender serviceNotSupportedBy:(XMPPJID *)room;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender serviceNotSupportedBy:(nonnull XMPPJID *)room;
 
 /**
  * Called when the MUC-Sub server responds with an error `[XMPPMUCSub supportedBy:]`.
 **/
-- (void)xmppMUCSub:(XMPPMUCSub *)sender didFailToReceiveSupportedBy:(XMPPJID *)room
-             error:(NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToReceiveSupportedBy:(nonnull XMPPJID *)room
+             error:(nonnull NSError *)error;
 
 @end
 
