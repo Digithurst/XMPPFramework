@@ -19,14 +19,24 @@
 @class XMPPRoom;
 
 /**
- * The XMPPMUCSub provides functionality to a proprietary Multi User Chat extension of 
- * the ejabberd XMPP server. This extension aims to provide a solution to the problem
- * that users are required to send a presence to a MUC room in oder to receive messages.
- * By subscribing to the room a user can also participate if not online. Once reconnected,
+ * The XMPPMUCSub provides support for a proprietary Multi User Chat extension of the
+ * ejabberd XMPP server. This extension aims to provide a solution to the problem that 
+ * users are required to send a presence to a MUC room in order to receive messages. By 
+ * subscribing to the room a user can also participate if not online. Once reconnected,
  * missed messages are synced.
  * 
- * The extension leverages several existing extension to achieve its task. More details
- * can be found on the project's website (as of 09.10.2017).
+ * Users can, of course, also join the room as before. From the project specification:
+ * 
+ * "If a user wants to be present in the room, he just have to join the room as defined 
+ * in XEP-0045. A subscriber MAY decide to join a conference (in the XEP-0045 sense). In 
+ * this case a conference MUST behave as described in XEP-0045 7.2 Entering a Room. A 
+ * conference MUST process events as described under XEP-0045 7.1 Order of Events except 
+ * it MUST not send room history. When a subscriber is joined, a conference MUST stop 
+ * sending subscription events and MUST switch to a regular groupchat protocol (as 
+ * described in XEP-0045) until a subscriber leaves."
+ * 
+ * The extension leverages several existing XEPs to achieve its task. More details can be 
+ * found on the project's website (as of 09.10.2017).
  * 
  * https://docs.ejabberd.im/developer/xmpp-clients-bots/proposed-extensions/muc-sub/
  * 
@@ -56,8 +66,9 @@
  *        The `XMPPRoom` for which to check if MUC-Sub has been enabled.
  * 
  * @return
- * The request id of the IQ is in case client code may want to do manual tracking. `nil`
- * if `room` is `nil`.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `room` is `nil`
+ * or there is no active connection (`[XMPPStream isConnected]`).
  *
  * @see `[XMPPMUCSub xmppMUCSub:serviceSupportedBy:]`, 
  *      `[XMPPMUCSub xmppMUCSub:serviceNotSupportedBy:]`,
@@ -81,8 +92,9 @@
  *        `nil`.
  * 
  * @return
- * The request id of the IQ is in case client code may want to do manual tracking. `nil`
- * if `room` is `nil`.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `room` is `nil`
+ * or there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)subscribeTo:(nonnull XMPPJID *)room nick:(nullable NSString *)nick 
                           password:(nullable NSString *)pass;
@@ -94,8 +106,9 @@
  *        The room's JID to which oneself unsubscribes from.
  * 
  * @return
- * The request id of the IQ is returned in case client code may want to do manual 
- * tracking. `nil` if `room` is `nil`.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `room` is `nil`
+ * or there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)unsubscribeFrom:(nonnull XMPPJID *)room;
 
@@ -111,15 +124,16 @@
  *        The room's JID to which `user` subscribes to.
  * 
  * @param nick
- *        Ones nickname in the room. If `nil`, the bare JID is used.
+ *        The nickname of `user` in the room. If `nil`, the bare JID is used.
  * 
  * @param pass
  *        If the room is secured with a password it needs to be specified. Otherwise
  *        `nil`.
  * 
  * @return
- * The request id of the IQ is returned in case client code may want to do manual 
- * tracking. `nil` if `user` and/or `room` are `nil`.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `user` and/or 
+ * `room` are `nil` or there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)subscribe:(nonnull XMPPJID *)user to:(nonnull XMPPJID *)room 
                             nick:(nullable NSString *)nick password:(nullable NSString *)pass;
@@ -136,8 +150,9 @@
  *        The room's JID from which `user` unsubscribes.
  * 
  * @return
- * The request id of the IQ is returned in case client code may want to do manual 
- * tracking. `nil` if `user` and/or `room` are `nil`.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `user` and/or 
+ * `room` are `nil` or there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)unsubscribe:(nonnull XMPPJID *)user from:(nonnull XMPPJID *)room;
 
@@ -149,8 +164,9 @@
  *        service discovery. Typical examples may start with "muc." or "conference.".
  * 
  * @return
- * The request id of the IQ is returned in case client code may want to do manual 
- * tracking.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `domain` is `nil`
+ * or there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)subscriptionsAt:(nonnull NSString *)domain;
 
@@ -159,10 +175,11 @@
  * has to be moderator in the room to perform this task.
  * 
  * @return
- * The request id of the IQ is returned in case client code may want to do manual 
- * tracking.
+ * Returns the randomly generated "id" attribute value of the standard <iq> element that 
+ * is sent in case client code may want to do manual tracking. `nil` if `room` is nil or
+ * there is no active connection (`[XMPPStream isConnected]`).
 **/
-- (nullable NSString *)subscribersIn:(nonnull XMPPJID *)room;
+- (nullable NSString *)subscribersOf:(nonnull XMPPJID *)room;
 
 @end
 
@@ -180,7 +197,7 @@
 @optional
 
 /**
- * The user has been subscribed to a specific room. It is not differentiated between 
+ * The user has been subscribed from a specific room. It is not differentiated between 
  * subscribing oneself or another user. Both result in this method being called on 
  * success.
 **/
@@ -196,7 +213,7 @@
 
 
 /**
- * The user has been unsubscribed to a specific room. It is not differentiated between 
+ * The user has been unsubscribed from a specific room. It is not differentiated between 
  * unsubscribing oneself or another user. Both result in this method being called on 
  * success.
 **/
@@ -233,9 +250,8 @@
  * Called in response to `[XMPPMUCSub subscribers:]`. Returns an array of user `XMPPJID`
  * objects that are subscribed to the specified room.
 **/
-- (void)xmppMUCSubDidFailToReceiveSubscribersIn:(nonnull XMPPMUCSub *)sender 
-                                             to:(nonnull XMPPJID *)room 
-                                          error:(nonnull NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToReceiveSubscribersOf:(nonnull XMPPJID *)room 
+             error:(nonnull NSError *)error;
 
 /**
  * Called when a message has been received. The message is parsed from MUC-Sub format and

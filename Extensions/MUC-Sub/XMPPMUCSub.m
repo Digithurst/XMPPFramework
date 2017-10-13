@@ -26,10 +26,7 @@
 static NSString *const XMPPPubSubNamespace = @"http://jabber.org/protocol/pubsub#event";
 static NSString *const XMPPMUCSubNamespace = @"urn:xmpp:mucsub:0";
 static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
-
-@interface XMPPMUCSub (PrivateAPI)
-
-@end
+static int XMPPIDTrackerTimout = 60;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
@@ -102,20 +99,29 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
     //   <query xmlns='http://jabber.org/protocol/disco#info'/>
     // </iq>
     
-    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:XMPPDiscoInfoNamespace];
-    
     NSString *iqId = [XMPPStream generateUUID];
     
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
-    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
-    [iq addAttributeWithName:@"to"   stringValue:room.roomJID.bare];
-    
-    [iq addChild:query];
-    
-    [xmppIDTracker addElement:iq target:self selector:@selector(handleSupportedByIQ:withInfo:) 
-                      timeout:60];
-    [xmppStream sendElement:iq];
-    
+    dispatch_block_t block = ^{ @autoreleasepool {
+        NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:XMPPDiscoInfoNamespace];
+        
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
+        [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.full];
+        [iq addAttributeWithName:@"to"   stringValue:room.roomJID.bare];
+        
+        [iq addChild:query];
+        
+        [xmppIDTracker addElement:iq target:self selector:@selector(handleSupportedByIQ:withInfo:) 
+                          timeout:XMPPIDTrackerTimout];
+        [xmppStream sendElement:iq];
+    }};
+
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
+
     return iqId;
 }
 
@@ -138,7 +144,7 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
 - (NSString *)subscribe:(XMPPJID *)user to:(XMPPJID *)room nick:(NSString *)nick
                password:(NSString *)pass
 {
-    if (nil == user || nil == room) {
+    if (nil == user || nil == room || !xmppStream.isConnected) {
         return nil;
     }
     
@@ -160,53 +166,62 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
     // she/he is a moderator (otherwise server complains), then <iq from> is the moderator's
     // JID and <subscribe jid> is the user that shall be subscribed.
     
-    if (nil == nick) {
-        nick = user.bare;
-    }
-    
-    // Build the request from the inside out.
-    NSXMLElement *messages = [NSXMLElement elementWithName:@"event"];
-    [messages addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:messages"];
-    
-    NSXMLElement *presence = [NSXMLElement elementWithName:@"node"];
-    [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presence"];
-    
-    
-    NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
-    [subscribe addAttributeWithName:@"nick" stringValue:nick];
-    
-    // Subscribe self or somebody else? If somebody else then JID has to be added to <subscribe>.
-    if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
-        [subscribe addAttributeWithName:@"jid" stringValue:user.bare];
-    }
-    if (nil != pass) {
-        [subscribe addAttributeWithName:@"password" stringValue:pass];
-    }
-
-    [subscribe addChild:messages];
-    [subscribe addChild:presence];
-    
-    
     NSString *iqId = [XMPPStream generateUUID];
     
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:iqId];
-    // Current user in from is always correct. Either as self or as moderator.
-    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
-    [iq addAttributeWithName:@"to"   stringValue:room.bare];
-    
-    [iq addChild:subscribe];
-    
-    [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscribeQueryIQ:withInfo:) 
-                      timeout:60];
-    [xmppStream sendElement:iq];
-    
+    dispatch_block_t block = ^{ @autoreleasepool {
+        NSString* usedNick = nick;
+        if (nil == nick) {
+            usedNick = user.bare;
+        }
+        
+        // Build the request from the inside out.
+        NSXMLElement *messages = [NSXMLElement elementWithName:@"event"];
+        [messages addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:messages"];
+        
+        NSXMLElement *presence = [NSXMLElement elementWithName:@"node"];
+        [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presence"];
+        
+        
+        NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
+        [subscribe addAttributeWithName:@"nick" stringValue:nick];
+        
+        // Subscribe self or somebody else? If somebody else then JID has to be added to <subscribe>.
+        if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
+            [subscribe addAttributeWithName:@"jid" stringValue:user.bare];
+        }
+        if (nil != pass) {
+            [subscribe addAttributeWithName:@"password" stringValue:pass];
+        }
+
+        [subscribe addChild:messages];
+        [subscribe addChild:presence];
+        
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:iqId];
+        // Current user in from is always correct. Either as self or as moderator.
+        [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
+        [iq addAttributeWithName:@"to"   stringValue:room.bare];
+        
+        [iq addChild:subscribe];
+        
+        [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscribeQueryIQ:withInfo:) 
+                          timeout:XMPPIDTrackerTimout];
+        [xmppStream sendElement:iq];
+    }};
+
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
+
     return iqId;
 }
 
 
 - (NSString *)unsubscribe:(XMPPJID *)user from:(XMPPJID *)room
 {
-    if (nil == user || nil == room) {
+    if (nil == user || nil == room || !xmppStream.isConnected) {
         return nil;
     }
     
@@ -223,27 +238,35 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
     // she/he is a moderator (otherwise server complains), then <iq from> is the moderator's
     // JID and <unsubscribe jid> is the user that shall be unsubscribed.
     
-    NSXMLElement *unsubscribe = [NSXMLElement elementWithName:@"unsubscribe" 
-                                                        xmlns:XMPPMUCSubNamespace];
-    // Unsubscribe self or somebody else? If somebody else then JID has to be added to 
-    // <unsubscribe>.
-    if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
-        [unsubscribe addAttributeWithName:@"jid" stringValue:user.bare];
-    }
-    
-    
     NSString *iqId = [XMPPStream generateUUID];
     
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:iqId];
-    // Current user in from is always correct. Either as self or as moderator.
-    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
-    [iq addAttributeWithName:@"to"   stringValue:room.bare];
+    dispatch_block_t block = ^{ @autoreleasepool {
+        NSXMLElement *unsubscribe = [NSXMLElement elementWithName:@"unsubscribe" 
+                                                            xmlns:XMPPMUCSubNamespace];
+        // Unsubscribe self or somebody else? If somebody else then JID has to be added to 
+        // <unsubscribe>.
+        if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
+            [unsubscribe addAttributeWithName:@"jid" stringValue:user.bare];
+        }
+        
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:iqId];
+        // Current user in from is always correct. Either as self or as moderator.
+        [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
+        [iq addAttributeWithName:@"to"   stringValue:room.bare];
+        
+        [iq addChild:unsubscribe];
+        
+        [xmppIDTracker addElement:iq target:self selector:@selector(handleUnsubscribeQueryIQ:withInfo:) 
+                          timeout:XMPPIDTrackerTimout];
+        [xmppStream sendElement:iq];
+    }};
     
-    [iq addChild:unsubscribe];
-    
-    [xmppIDTracker addElement:iq target:self selector:@selector(handleUnsubscribeQueryIQ:withInfo:) 
-                      timeout:60];
-    [xmppStream sendElement:iq];
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
     
     return iqId;
 }
@@ -251,7 +274,7 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
 
 - (NSString *)subscriptionsAt:(NSString *)domain
 {
-    if (nil == domain) {
+    if (nil == domain || !xmppStream.isConnected) {
         return nil;
     }
     
@@ -262,28 +285,37 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
     //   <subscriptions xmlns='urn:xmpp:mucsub:0' />
     // </iq>
     
-    NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
-                                                          xmlns:XMPPMUCSubNamespace];
-    
     NSString *iqId = [XMPPStream generateUUID];
     
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
-    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
-    [iq addAttributeWithName:@"to"   stringValue:domain];
-    
-    [iq addChild:subscriptions];
-    
-    [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscriptionsAtQueryIQ:withInfo:) 
-                      timeout:60];
-    [xmppStream sendElement:iq];
-    
+    dispatch_block_t block = ^{ @autoreleasepool {
+        NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
+                                                              xmlns:XMPPMUCSubNamespace];
+        
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
+        [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
+        [iq addAttributeWithName:@"to"   stringValue:domain];
+        
+        [iq addChild:subscriptions];
+        
+        [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscriptionsAtQueryIQ:withInfo:) 
+                          timeout:XMPPIDTrackerTimout];
+        [xmppStream sendElement:iq];
+    }};
+
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
+
     return iqId;
 }
 
 
-- (NSString *)subscribersIn:(XMPPJID *)room
+- (NSString *)subscribersOf:(XMPPJID *)room
 {
-    if (nil == room) {
+    if (nil == room || !xmppStream.isConnected) {
         return nil;
     }
     
@@ -294,20 +326,29 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
     //   <subscriptions xmlns='urn:xmpp:mucsub:0' />
     // </iq>
     
-    NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
-                                                          xmlns:XMPPMUCSubNamespace];
-    
     NSString *iqId = [XMPPStream generateUUID];
     
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
-    [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
-    [iq addAttributeWithName:@"to"   stringValue:room.bare];
+    dispatch_block_t block = ^{ @autoreleasepool {
+        NSXMLElement *subscriptions = [NSXMLElement elementWithName:@"subscriptions"
+                                                              xmlns:XMPPMUCSubNamespace];
+        
+        XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:iqId];
+        [iq addAttributeWithName:@"from" stringValue:xmppStream.myJID.bare];
+        [iq addAttributeWithName:@"to"   stringValue:room.bare];
+        
+        [iq addChild:subscriptions];
+        
+        [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscribersInQueryIQ:withInfo:) 
+                          timeout:XMPPIDTrackerTimout];
+        [xmppStream sendElement:iq];
+    }};
     
-    [iq addChild:subscriptions];
-    
-    [xmppIDTracker addElement:iq target:self selector:@selector(handleSubscribersInQueryIQ:withInfo:) 
-                      timeout:60];
-    [xmppStream sendElement:iq];
+    if (dispatch_get_specific(moduleQueueTag)) {
+        block();
+    }
+    else {
+        dispatch_async(moduleQueue, block);
+    }
     
     return iqId;
 }
@@ -420,8 +461,8 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
             [multicastDelegate xmppMUCSub:self didReceiveSubscribersIn:rooms to:iq.from];
         }
         else {
-            [multicastDelegate xmppMUCSubDidFailToReceiveSubscribersIn:self to:iq.from
-                                                                 error:[self errorFromIQ:iq]];
+            [multicastDelegate xmppMUCSub:self didFailToReceiveSubscribersOf:iq.from
+                                    error:[self errorFromIQ:iq]];
         }
     }};
     
@@ -659,6 +700,16 @@ static NSString *const XMPPMUCSubFeaturesPrefix = @"urn:xmpp:mucsub:nodes:";
 
 - (NSArray<XMPPJID *>*)jidFromSubscriptionIQ:(XMPPIQ *)iq
 {
+    // <iq from='muc.shakespeare.example'
+    //       to='hag66@shakespeare.example'
+    //     type='result'
+    //       id='E6E10350-76CF-40C6-B91B-1EA08C332FC7'>
+    //   <subscriptions xmlns='urn:xmpp:mucsub:0'>
+    //     <subscription jid='coven@muc.shakespeare.example' />
+    //     <subscription jid='chat@muc.shakespeare.example' />
+    //   </subscriptions>
+    // </iq>
+    
     NSXMLElement *subscriptions = [iq elementForName:@"subscriptions" xmlns:XMPPMUCSubNamespace];
     if (nil == subscriptions) {
         return nil;
