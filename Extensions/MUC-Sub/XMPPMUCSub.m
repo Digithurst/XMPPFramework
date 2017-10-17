@@ -391,13 +391,6 @@ static int XMPPIDTrackerTimout = 60;
 - (void)handleUnsubscribeQueryIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
 {
     dispatch_block_t block = ^{ @autoreleasepool {
-        NSXMLElement *query = [iq elementForName:@"unsubscribe" xmlns:XMPPMUCSubNamespace];
-        if (nil == query) {
-            // Must have been another request with the same id?
-            // Can this actually happen? Still, safeguard for my conscience.
-            return;
-        }
-        
         // "to" and "from" are the other way around in the response. Therefore the function
         // call reads a bit funny. "to" is the receiving user and "from" the sending room.
         if (iq.isResultIQ) {
