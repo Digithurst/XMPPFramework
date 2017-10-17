@@ -183,7 +183,7 @@ static int XMPPIDTrackerTimout = 60;
         
         
         NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
-        [subscribe addAttributeWithName:@"nick" stringValue:nick];
+        [subscribe addAttributeWithName:@"nick" stringValue:usedNick];
         
         // Subscribe self or somebody else? If somebody else then JID has to be added to <subscribe>.
         if (![xmppStream.myJID.bare isEqualToString:user.bare]) {
