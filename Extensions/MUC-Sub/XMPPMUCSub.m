@@ -575,7 +575,7 @@ static int XMPPIDTrackerTimout = 60;
             }
             
             XMPPMessage *m = [XMPPMessage messageFromElement:(NSXMLElement *)messageNode];
-            [multicastDelegate xmppStream:sender didReceiveMessage:m];
+            [multicastDelegate xmppMUCSub:self didReceiveMessage:m];
         }
     }};
     
@@ -628,7 +628,7 @@ static int XMPPIDTrackerTimout = 60;
             }
             
             XMPPPresence *p = [XMPPPresence presenceFromElement:(NSXMLElement *)presenceNode];
-            [multicastDelegate xmppStream:sender didReceivePresence:p];
+            [multicastDelegate xmppMUCSub:self didReceivePresence:p];
         }
     }};
     
