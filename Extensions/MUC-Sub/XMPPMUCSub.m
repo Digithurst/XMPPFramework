@@ -179,7 +179,7 @@ static int XMPPIDTrackerTimout = 60;
         [messages addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:messages"];
         
         NSXMLElement *presence = [NSXMLElement elementWithName:@"node"];
-        [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presence"];
+        [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presences"];
         
         
         NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
