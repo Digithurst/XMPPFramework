@@ -17,6 +17,7 @@
 @class XMPPMessage;
 @class XMPPPresence;
 @class XMPPRoom;
+@class XMPPElement;
 
 /**
  * The XMPPMUCSub provides support for a proprietary Multi User Chat extension of the
@@ -180,6 +181,17 @@
  * there is no active connection (`[XMPPStream isConnected]`).
 **/
 - (nullable NSString *)subscribersOf:(nonnull XMPPJID *)room;
+
+/**
+ * Checks if the given element is a MUC-Sub encapsulated element.
+ * 
+ * @param element
+ *        An `XMPPElement`, e.g. a message or presence, that was received.
+ * 
+ * @return
+ * `TRUE` if the element is MUC-Sub encapsulated or `FALSE` if not.
+**/
++ (BOOL)isMUCSucElement:(nonnull XMPPElement *)element;
 
 @end
 

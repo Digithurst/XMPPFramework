@@ -353,6 +353,13 @@ static int XMPPIDTrackerTimout = 60;
     return iqId;
 }
 
+
++ (BOOL)isMUCSucElement:(nonnull XMPPElement *)element
+{
+    NSXMLElement *item = [self findMUCSubItemsElement:element forEvent:@""];
+    return nil != item;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark XMPPIDTracker
@@ -555,7 +562,7 @@ static int XMPPIDTrackerTimout = 60;
     //   </event>
     // </message>
     
-    NSXMLElement* items = [self findMUCSubItemsElement:message forEvent:@"messages"];
+    NSXMLElement* items = [XMPPMUCSub findMUCSubItemsElement:message forEvent:@"messages"];
     if (nil == items) {
         return;
     }
@@ -608,7 +615,7 @@ static int XMPPIDTrackerTimout = 60;
     //   </event>
     // </message>
     
-    NSXMLElement* items = [self findMUCSubItemsElement:presence forEvent:@"presences"];
+    NSXMLElement* items = [XMPPMUCSub findMUCSubItemsElement:presence forEvent:@"presences"];
     if (nil == items) {
         return;
     }
@@ -720,7 +727,7 @@ static int XMPPIDTrackerTimout = 60;
 }
 
 
-- (NSXMLElement *)findMUCSubItemsElement:(XMPPElement *)element forEvent:(NSString *)event
++ (NSXMLElement *)findMUCSubItemsElement:(XMPPElement *)element forEvent:(NSString *)event
 {
     NSXMLElement *eventElement = [element elementForName:@"event" xmlns:XMPPPubSubNamespace];
     if (nil == eventElement) {
@@ -732,8 +739,12 @@ static int XMPPIDTrackerTimout = 60;
         return nil;
     }
     
+    // Check start of attribute is good enough since it's internal. This way we can also
+    // return an element if "node" starts with `XMPPMUCSubFeaturesPrefix`. This is helpful
+    // for `[XMPPMUCSub isMUCSucElement:]`. Other queries pass an event which makes them
+    // exact.
     NSString* mucsubString = [XMPPMUCSubFeaturesPrefix stringByAppendingString:event];
-    if (![[mucsubItems attributeStringValueForName:@"node"] isEqualToString:mucsubString]) {
+    if (![[mucsubItems attributeStringValueForName:@"node"] hasPrefix:mucsubString]) {
         return nil;
     }
     
