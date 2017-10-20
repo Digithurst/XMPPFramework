@@ -587,42 +587,9 @@ static int XMPPIDTrackerTimout = 60;
     //     </items>
     //   </event>
     // </message>
-    
-    NSXMLElement* items = [XMPPMUCSub findMUCSubItemsElement:message forEvent:@"messages"];
-    if (nil == items) {
-        return;
-    }
-    
-    // All preconditions show that it's a MUC-Sub message. Extract the original message
-    // and forward it to the registered delegates. The message may contain several <item>
-    // elements and thus several original <message> elements.
-    dispatch_block_t block = ^{ @autoreleasepool {
-        for (NSXMLNode *item in items.children) {
-            NSXMLNode* messageNode = [item childAtIndex:0];
-            if (nil == messageNode) {
-                continue;
-            }
-            
-            if (NSXMLElementKind != messageNode.kind) {
-                continue;
-            }
-            
-            XMPPMessage *m = [XMPPMessage messageFromElement:(NSXMLElement *)messageNode];
-            [multicastDelegate xmppMUCSub:self didReceiveMessage:m];
-        }
-    }};
-    
-    if (dispatch_get_specific(moduleQueueTag)) {
-        block();
-    }
-    else {
-        dispatch_async(moduleQueue, block);
-    }
-}
-
-
-- (void)xmppStream:(XMPPStream *)sender didReceivePresence:(XMPPPresence *)presence
-{
+    //
+    // or for presences
+    //
     // <message from="coven@muc.shakespeare.example"
     //            to="hag66@shakespeare.example/pda">
     //   <event xmlns="http://jabber.org/protocol/pubsub#event">
@@ -641,35 +608,53 @@ static int XMPPIDTrackerTimout = 60;
     //   </event>
     // </message>
     
-    NSXMLElement* items = [XMPPMUCSub findMUCSubItemsElement:presence forEvent:@"presences"];
-    if (nil == items) {
-        return;
-    }
+    dispatch_block_t block = nil;
+    NSXMLElement* items = nil;
     
-    // All preconditions show that it's a MUC-Sub message. Extract the original message
-    // and forward it to the registered delegates. The message may contain several <item>
-    // elements and thus several original <message> elements.
-    dispatch_block_t block = ^{ @autoreleasepool {
-        for (NSXMLNode *item in items.children) {
-            NSXMLNode* presenceNode = [item childAtIndex:0];
-            if (nil == presenceNode) {
-                continue;
-            }
-            
-            if (NSXMLElementKind != presenceNode.kind) {
-                continue;
-            }
-            
-            XMPPPresence *p = [XMPPPresence presenceFromElement:(NSXMLElement *)presenceNode];
-            [multicastDelegate xmppMUCSub:self didReceivePresence:p];
+    static NSString *messagesEvent = @"messages";
+    static NSString *presenceEvent = @"presence";
+    
+    NSArray<NSString *> *events = @[messagesEvent, presenceEvent];
+    NSString *event = nil;
+    for (event in events) {
+        if ((items = [XMPPMUCSub findMUCSubItemsElement:message forEvent:event])) {
+            break;
         }
-    }};
-    
-    if (dispatch_get_specific(moduleQueueTag)) {
-        block();
     }
-    else {
-        dispatch_async(moduleQueue, block);
+    
+    if (nil != items && nil != event) {
+        // All preconditions show that it's a MUC-Sub message. Extract the original message
+        // or presence (or?) and forward it to the registered delegates.
+        block = ^{ @autoreleasepool {
+            for (NSXMLNode *item in items.children) {
+                NSXMLNode* node = [item childAtIndex:0];
+                if (nil == node) {
+                    continue;
+                }
+                
+                if (NSXMLElementKind != node.kind) {
+                    continue;
+                }
+                
+                if ([event isEqualToString:messagesEvent]) {
+                    XMPPMessage *m = [XMPPMessage messageFromElement:(NSXMLElement *)node];
+                    [multicastDelegate xmppMUCSub:self didReceiveMessage:m];
+                }
+                else if ([event isEqualToString:presenceEvent]) {
+                    XMPPPresence *p = [XMPPPresence presenceFromElement:(NSXMLElement *)node];
+                    [multicastDelegate xmppMUCSub:self didReceivePresence:p];
+                }
+            }
+        }};
+    }
+    
+    if (nil != block) {
+        if (dispatch_get_specific(moduleQueueTag)) {
+            block();
+        }
+        else {
+            dispatch_async(moduleQueue, block);
+        }
     }
 }
 
