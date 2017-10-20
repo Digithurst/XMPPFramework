@@ -213,15 +213,22 @@
  * subscribing oneself or another user. Both result in this method being called on 
  * success.
 **/
-- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didSubscribeUser:(nonnull XMPPJID *)user 
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didSubscribeUser:(nonnull XMPPJID *)user
+          withNick:(nullable NSString *)nick 
                 to:(nonnull XMPPJID *)room;
 
 /**
  * The subscription process failed. It is not differentiated between subscribing oneself
  * or another user. Both result in this method being called on failure.
+ *
+ * Note: If a moderator subscribes another user then `user` is the JID of the moderator. 
+ *       That's because that is the user to which the request is sent to. You best rely
+ *       on the `nick`.
 **/
-- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToSubscribe:(nonnull XMPPJID *)user 
-                to:(nonnull XMPPJID *)room error:(nonnull NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToSubscribeUser:(nonnull XMPPJID *)user
+          withNick:(nullable NSString *)nick 
+                to:(nonnull XMPPJID *)room 
+             error:(nonnull NSError *)error;
 
 
 /**
@@ -236,8 +243,9 @@
  * The unsubscription process failed. It is not differentiated between unsubscribing 
  * oneself or another user. Both result in this method being called on failure.
 **/
-- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToUnsubscribe:(nonnull XMPPJID *)user 
-              from:(nonnull XMPPJID *)room error:(nonnull NSError *)error;
+- (void)xmppMUCSub:(nonnull XMPPMUCSub *)sender didFailToUnsubscribeUser:(nonnull XMPPJID *)user 
+              from:(nonnull XMPPJID *)room 
+             error:(nonnull NSError *)error;
 
 /**
  * Called in response to `[XMPPMUCSub subscriptions]`. Returns an array of room `XMPPJID`

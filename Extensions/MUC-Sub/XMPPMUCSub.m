@@ -178,8 +178,8 @@ static int XMPPIDTrackerTimout = 60;
         NSXMLElement *messages = [NSXMLElement elementWithName:@"event"];
         [messages addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:messages"];
         
-        NSXMLElement *presence = [NSXMLElement elementWithName:@"node"];
-        [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presences"];
+        NSXMLElement *presence = [NSXMLElement elementWithName:@"event"];
+        [presence addAttributeWithName:@"node" stringValue:@"urn:xmpp:mucsub:nodes:presence"];
         
         
         NSXMLElement *subscribe = [NSXMLElement elementWithName:@"subscribe" xmlns:XMPPMUCSubNamespace];
@@ -368,20 +368,31 @@ static int XMPPIDTrackerTimout = 60;
 - (void)handleSubscribeQueryIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
 {
     dispatch_block_t block = ^{ @autoreleasepool {
-        NSXMLElement *query = [iq elementForName:@"subscribe" xmlns:XMPPMUCSubNamespace];
-        if (nil == query) {
-            // Can this actually happen? Still, safeguard for my conscience.
-            return;
-        }
+        // Extract the values of the original request. Only this way we can make sure we
+        // have the correct information. If we find "jid" in <subscribe> then we take that.
+        // It means a mod subscribed another user. If not, then we use <iq "from">. It means
+        // a user subscribed himself/herself.
+        XMPPElement *request = basicTrackingInfo.element;
+        NSXMLElement *subscribe = [request elementForName:@"subscribe" xmlns:XMPPMUCSubNamespace];
         
-        // "to" and "from" are the other way around in the response. Therefore the function
-        // call reads a bit funny. "to" is the receiving user and "from" the sending room.
-        if (iq.isResultIQ) {
-            [multicastDelegate xmppMUCSub:self didSubscribeUser:iq.to to:iq.from];
+        NSString *nick = [subscribe attributeStringValueForName:@"nick"];
+        NSString *jid  = [subscribe attributeStringValueForName:@"jid"];
+        
+        XMPPJID *user = nil;
+        if (nil != jid)  {
+            user = [XMPPJID jidWithString:jid];
         }
         else {
-            [multicastDelegate xmppMUCSub:self didFailToSubscribe:iq.to 
-                                       to:iq.from 
+            user = request.from;
+        }
+        
+        if (iq.isResultIQ) {
+            [multicastDelegate xmppMUCSub:self didSubscribeUser:user withNick:nick to:request.to];
+        }
+        else {
+            [multicastDelegate xmppMUCSub:self didFailToSubscribeUser:user 
+                                 withNick:nick
+                                       to:request.to 
                                     error:[self errorFromIQ:iq]];
         }
     }};
@@ -398,14 +409,29 @@ static int XMPPIDTrackerTimout = 60;
 - (void)handleUnsubscribeQueryIQ:(XMPPIQ *)iq withInfo:(XMPPBasicTrackingInfo *)basicTrackingInfo
 {
     dispatch_block_t block = ^{ @autoreleasepool {
-        // "to" and "from" are the other way around in the response. Therefore the function
-        // call reads a bit funny. "to" is the receiving user and "from" the sending room.
-        if (iq.isResultIQ) {
-            [multicastDelegate xmppMUCSub:self didUnsubscribeUser:iq.to from:iq.from];
+        // Extract the values of the original request. Only this way we can make sure we
+        // have the correct information. If we find "jid" in <subscribe> then we take that.
+        // It means a mod subscribed another user. If not, then we use <iq "from">. It means
+        // a user subscribed himself/herself.
+        XMPPElement *request = basicTrackingInfo.element;
+        NSXMLElement *subscribe = [request elementForName:@"unsubscribe" xmlns:XMPPMUCSubNamespace];
+        
+        NSString *jid  = [subscribe attributeStringValueForName:@"jid"];
+        
+        XMPPJID *user = nil;
+        if (nil != jid)  {
+            user = [XMPPJID jidWithString:jid];
         }
         else {
-            [multicastDelegate xmppMUCSub:self didFailToUnsubscribe:iq.to 
-                                       from:iq.from 
+            user = request.from;
+        }
+        
+        if (iq.isResultIQ) {
+            [multicastDelegate xmppMUCSub:self didUnsubscribeUser:user from:iq.from];
+        }
+        else {
+            [multicastDelegate xmppMUCSub:self didFailToUnsubscribeUser:user 
+                                     from:iq.from
                                     error:[self errorFromIQ:iq]];
         }
     }};
