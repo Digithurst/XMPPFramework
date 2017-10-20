@@ -191,7 +191,7 @@
  * @return
  * `TRUE` if the element is MUC-Sub encapsulated or `FALSE` if not.
 **/
-+ (BOOL)isMUCSucElement:(nonnull XMPPElement *)element;
++ (BOOL)isMUCSubElement:(nonnull XMPPElement *)element;
 
 @end
 

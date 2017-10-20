@@ -354,7 +354,7 @@ static int XMPPIDTrackerTimout = 60;
 }
 
 
-+ (BOOL)isMUCSucElement:(nonnull XMPPElement *)element
++ (BOOL)isMUCSubElement:(nonnull XMPPElement *)element
 {
     NSXMLElement *item = [self findMUCSubItemsElement:element forEvent:@""];
     return nil != item;
@@ -767,7 +767,7 @@ static int XMPPIDTrackerTimout = 60;
     
     // Check start of attribute is good enough since it's internal. This way we can also
     // return an element if "node" starts with `XMPPMUCSubFeaturesPrefix`. This is helpful
-    // for `[XMPPMUCSub isMUCSucElement:]`. Other queries pass an event which makes them
+    // for `[XMPPMUCSub isMUCSubElement:]`. Other queries pass an event which makes them
     // exact.
     NSString* mucsubString = [XMPPMUCSubFeaturesPrefix stringByAppendingString:event];
     if (![[mucsubItems attributeStringValueForName:@"node"] hasPrefix:mucsubString]) {
