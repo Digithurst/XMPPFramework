@@ -421,4 +421,11 @@
 **/
 - (void)xmppRoster:(XMPPRoster *)sender didReceiveRosterItem:(NSXMLElement *)item;
 
+/**
+ * Sent when the roster receives a "subscribe" request and automatically answers it because
+ * the user is already on the roster and auto-subscribe is enabled for that case. The default
+ * behavior of `[XMPPRoster addUser:withNickname:]` and `[XMPPRoster addUser:withNickname:groups:]`.
+**/
+- (void)xmppRoster:(XMPPRoster *)sender didAcceptKnownUserSubscriptionRequest:(XMPPJID *)user;
+
 @end

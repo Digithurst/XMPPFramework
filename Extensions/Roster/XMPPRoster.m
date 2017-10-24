@@ -896,7 +896,8 @@ enum XMPPRosterFlags
 			// <presence to="bareJID" type="subscribed"/>
 			
 			XMPPPresence *response = [XMPPPresence presenceWithType:@"subscribed" to:userJID];
-			[xmppStream sendElement:response];
+            [xmppStream sendElement:response];
+            [multicastDelegate xmppRoster:self didAcceptKnownUserSubscriptionRequest:userJID];
 		}
 		else
 		{
